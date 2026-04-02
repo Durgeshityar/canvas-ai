@@ -1,30 +1,30 @@
-import { z } from 'zod'
-import bcrypt from 'bcryptjs'
-import type { NextAuthConfig } from 'next-auth'
-import { eq } from 'drizzle-orm'
-import { JWT } from 'next-auth/jwt'
-import GitHub from 'next-auth/providers/github'
-import Google from 'next-auth/providers/google'
-import Credentials from 'next-auth/providers/credentials'
-import { DrizzleAdapter } from '@auth/drizzle-adapter'
+import { z } from "zod";
+import bcrypt from "bcryptjs";
+import type { NextAuthConfig } from "next-auth";
+import { eq } from "drizzle-orm";
+import { JWT } from "next-auth/jwt";
+import GitHub from "next-auth/providers/github";
+import Google from "next-auth/providers/google";
+import Credentials from "next-auth/providers/credentials";
+import { DrizzleAdapter } from "@auth/drizzle-adapter";
 
-import { db } from '@/db/drizzle'
-import { users } from '@/db/schema'
+import { db } from "@/db/drizzle";
+import { users } from "@/db/schema";
 
 const CredentialsSchema = z.object({
   email: z.string().email(),
   password: z.string(),
-})
+});
 
-declare module 'next-auth/jwt' {
+declare module "next-auth/jwt" {
   interface JWT {
-    id: string | undefined
+    id: string | undefined;
   }
 }
 
-declare module '@auth/core/jwt' {
+declare module "@auth/core/jwt" {
   interface JWT {
-    id: string | undefined
+    id: string | undefined;
   }
 }
 
@@ -33,62 +33,68 @@ export default {
   providers: [
     Credentials({
       credentials: {
-        email: { label: 'Email', type: 'email' },
-        pasword: { label: 'Password', type: 'password' },
+        email: { label: "Email", type: "email" },
+        pasword: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        const validatedFields = CredentialsSchema.safeParse(credentials)
+        const validatedFields = CredentialsSchema.safeParse(credentials);
 
         if (!validatedFields.success) {
-          return null
+          return null;
         }
 
-        const { email, password } = validatedFields.data
+        const { email, password } = validatedFields.data;
 
         const query = await db
           .select()
           .from(users)
-          .where(eq(users.email, email))
+          .where(eq(users.email, email));
 
-        const user = query[0]
+        const user = query[0];
 
         if (!user || !user.password) {
-          return null
+          return null;
         }
 
-        const passwordsMatch = await bcrypt.compare(password, user.password)
+        const passwordsMatch = await bcrypt.compare(password, user.password);
 
         if (!passwordsMatch) {
-          return null
+          return null;
         }
 
-        return user
+        return user;
       },
     }),
-    GitHub,
-    Google,
+    GitHub({
+      clientId: process.env.GITHUB_CLIENT_ID!,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+    }),
+    Google({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    }),
   ],
   pages: {
-    signIn: '/sign-in',
-    error: '/sign-in',
+    signIn: "/sign-in",
+    error: "/sign-in",
   },
   session: {
-    strategy: 'jwt',
+    strategy: "jwt",
   },
   callbacks: {
     session({ session, token }) {
       if (token.id) {
-        session.user.id = token.id
+        session.user.id = token.id;
       }
 
-      return session
+      return session;
     },
     jwt({ token, user }) {
       if (user) {
-        token.id = user.id
+        token.id = user.id;
       }
 
-      return token
+      return token;
     },
   },
-} satisfies NextAuthConfig
+} satisfies NextAuthConfig;

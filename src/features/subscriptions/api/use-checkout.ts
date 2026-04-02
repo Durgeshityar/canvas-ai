@@ -3,6 +3,7 @@ import { InferResponseType } from 'hono'
 
 import { client } from '@/lib/hono'
 import { toast } from 'sonner'
+import { SUBSCRIPTION_DEMO_MESSAGE } from '@/features/subscriptions/constants'
 
 type ResponseType = InferResponseType<
   (typeof client.api.subscriptions.checkout)['$post'],
@@ -15,7 +16,8 @@ export const useCheckout = () => {
       const response = await client.api.subscriptions.checkout.$post()
 
       if (!response.ok) {
-        throw new Error('Failed to create a session')
+        const payload = (await response.json()) as { error?: string }
+        throw new Error(payload.error || SUBSCRIPTION_DEMO_MESSAGE)
       }
 
       return await response.json()
@@ -23,8 +25,8 @@ export const useCheckout = () => {
     onSuccess: ({ data }) => {
       window.location.href = data
     },
-    onError: () => {
-      toast.error('Failed to create session')
+    onError: (error) => {
+      toast.error(error.message || SUBSCRIPTION_DEMO_MESSAGE)
     },
   })
   return mutation

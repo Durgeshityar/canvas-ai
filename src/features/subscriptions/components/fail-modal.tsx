@@ -14,6 +14,7 @@ import {
 
 import { useFailModal } from '@/features/subscriptions/store/use-fail-modal'
 import { Button } from '@/components/ui/button'
+import { SUBSCRIPTION_DEMO_MESSAGE } from '@/features/subscriptions/constants'
 
 export const FailModal = () => {
   const router = useRouter()
@@ -30,10 +31,10 @@ export const FailModal = () => {
         <DialogHeader className="flex items-center space-y-4">
           <Image src="/logo.svg" alt="logo" width={36} height={36} />
           <DialogTitle className=" text-center">
-            Something went wrong
+            Upgrade unavailable
           </DialogTitle>
           <DialogDescription className=" text-center">
-            we could not process your payment
+            {SUBSCRIPTION_DEMO_MESSAGE}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="pt-2 mt-4 gap-y-2">

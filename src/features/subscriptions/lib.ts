@@ -3,7 +3,7 @@ import { subscriptions } from '@/db/schema'
 const DAY_IN_MS = 86_400_000
 
 export const chechIsActive = (
-  subscription: typeof subscriptions.$inferSelect
+  subscription?: typeof subscriptions.$inferSelect
 ) => {
   let active = false
 

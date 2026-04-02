@@ -29,7 +29,8 @@ export const SubscriptionModal = () => {
             Upgrade to a paid plan
           </DialogTitle>
           <DialogDescription className=" text-center">
-            Upgrade to a paid plan to unlock more features
+            Every account gets 1 free AI credit. Upgrade to unlock unlimited AI
+            and more features.
           </DialogDescription>
         </DialogHeader>
 

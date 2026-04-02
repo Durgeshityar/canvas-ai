@@ -29,6 +29,13 @@
       "when": 1722942831490,
       "tag": "0003_simple_ironclad",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1775120757295,
+      "tag": "0005_fearless_maginty",
+      "breakpoints": true
     }
   ]
 }

@@ -1,16 +1,89 @@
 import { Hono } from 'hono'
 import { z } from 'zod'
 import { zValidator } from '@hono/zod-validator'
+import { and, eq, gt, sql } from 'drizzle-orm'
 
 import { replicate } from '@/lib/replicate'
 import { verifyAuth } from '@hono/auth-js'
+import { db } from '@/db/drizzle'
+import { subscriptions, users } from '@/db/schema'
+import { chechIsActive } from '@/features/subscriptions/lib'
+
+const NO_CREDITS_ERROR =
+  'Your free AI credit is used. Upgrade to continue using AI features.'
+
+const hasActiveSubscription = async (userId: string) => {
+  const [subscription] = await db
+    .select()
+    .from(subscriptions)
+    .where(eq(subscriptions.userId, userId))
+
+  return chechIsActive(subscription)
+}
+
+const consumeTrialCredit = async (userId: string) => {
+  const [updatedUser] = await db
+    .update(users)
+    .set({
+      aiCredits: sql`${users.aiCredits} - 1`,
+    })
+    .where(and(eq(users.id, userId), gt(users.aiCredits, 0)))
+    .returning({ id: users.id })
+
+  return Boolean(updatedUser)
+}
+
+const ensureAiAccess = async (userId: string) => {
+  const active = await hasActiveSubscription(userId)
+
+  if (active) {
+    return true
+  }
+
+  return consumeTrialCredit(userId)
+}
 
 const app = new Hono()
+  .get('/usage', verifyAuth(), async (c) => {
+    const auth = c.get('authUser')
+
+    if (!auth.token?.id) {
+      return c.json({ error: 'Unauthorized' }, 401)
+    }
+
+    const [user] = await db
+      .select({ aiCredits: users.aiCredits })
+      .from(users)
+      .where(eq(users.id, auth.token.id))
+
+    const active = await hasActiveSubscription(auth.token.id)
+    const credits = user?.aiCredits ?? 0
+
+    return c.json({
+      data: {
+        active,
+        credits,
+        hasAccess: active || credits > 0,
+      },
+    })
+  })
   .post(
     '/remove-bg',
     verifyAuth(),
     zValidator('json', z.object({ image: z.string() })),
     async (c) => {
+      const auth = c.get('authUser')
+
+      if (!auth.token?.id) {
+        return c.json({ error: 'Unauthorized' }, 401)
+      }
+
+      const hasAccess = await ensureAiAccess(auth.token.id)
+
+      if (!hasAccess) {
+        return c.json({ error: NO_CREDITS_ERROR }, 402)
+      }
+
       const { image } = c.req.valid('json')
 
       const input = {
@@ -32,6 +105,18 @@ const app = new Hono()
     verifyAuth(),
     zValidator('json', z.object({ prompt: z.string() })),
     async (c) => {
+      const auth = c.get('authUser')
+
+      if (!auth.token?.id) {
+        return c.json({ error: 'Unauthorized' }, 401)
+      }
+
+      const hasAccess = await ensureAiAccess(auth.token.id)
+
+      if (!hasAccess) {
+        return c.json({ error: NO_CREDITS_ERROR }, 402)
+      }
+
       const { prompt } = c.req.valid('json')
 
       const input = {
